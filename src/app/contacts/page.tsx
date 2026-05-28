@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { isAuthenticated } from "@/lib/session";
+import clientData from "@/lib/clientData";
 
 interface Contact {
   id: string;
@@ -32,8 +32,13 @@ export default function ContactsPage() {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/contacts");
-      setContacts(response.data);
+      let session = {};
+      if (typeof window !== "undefined" && localStorage.getItem("contactAppSession")) {
+        session = JSON.parse(localStorage.getItem("contactAppSession") || "{}");
+      }
+      const userId = (session as any)?.userId ?? undefined;
+      const contacts = clientData.getContacts(userId);
+      setContacts(contacts);
     } catch (err) {
       setError("Failed to load contacts");
       console.error(err);
@@ -46,7 +51,8 @@ export default function ContactsPage() {
     if (!confirm("Are you sure you want to delete this contact?")) return;
 
     try {
-      await axios.delete(`/api/contacts/${id}`);
+      const ok = clientData.deleteContact(id);
+      if (!ok) throw new Error("Delete failed");
       fetchContacts();
     } catch (err) {
       setError("Failed to delete contact");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import axios from "axios";
+import clientData from "@/lib/clientData";
 import { getSession } from "@/lib/session";
 
 export default function Home() {
@@ -24,7 +24,7 @@ export default function Home() {
 
     try {
       const session = getSession();
-      const response = await axios.post("/api/contacts", {
+      clientData.addContact({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -37,7 +37,7 @@ export default function Home() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to add contact");
+      setError(err?.message || "Failed to add contact");
     } finally {
       setLoading(false);
     }

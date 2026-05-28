@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { setSession } from "@/lib/session";
+import clientData from "@/lib/clientData";
 import Link from "next/link";
 
 export default function Login() {
@@ -19,18 +19,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await axios.post("/api/auth/login", {
-        email,
-        password,
-      });
-
-      // Set session
-      setSession({
-        userId: response.data.user.id,
-        email: response.data.user.email,
-        name: response.data.user.name,
-      });
-
+      const user = clientData.findUserByEmailAndPassword(email, password);
+      if (!user) {
+        setError("Invalid email or password");
+        return;
+      }
+      setSession({ userId: user.id, email: user.email, name: user.name });
       router.push("/contacts");
     } catch (err: any) {
       setError(err.response?.data?.error || "Login failed");
@@ -54,9 +48,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-black font-semibold mb-2">
-              Email
-            </label>
+            <label className="block text-black font-semibold mb-2">Email</label>
             <input
               type="email"
               value={email}
