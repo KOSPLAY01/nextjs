@@ -3,15 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 const API_URL = "http://localhost:3001";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // UPDATE a post
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { title, content } = await request.json();
 
     if (!title || !content) {
@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE a post
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const response = await fetch(`${API_URL}/posts/${id}`, {
       method: "DELETE",
