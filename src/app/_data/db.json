@@ -1,0 +1,21 @@
+{
+  "contacts": [
+    {
+      "id": "XXrZpabY63M",
+      "name": "Abednego Alex",
+      "email": "abednegoalex1@gmail.com",
+      "phone": "+2349060823150",
+      "userId": "1"
+    }
+  ],
+  "users": [
+    {
+      "id": "1",
+      "name": "Admin",
+      "email": "admin@gmail.com",
+      "password": "admin123"
+    }
+  ],
+  "posts": [],
+  "$schema": "./node_modules/json-server/schema.json"
+}
