@@ -10,8 +10,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -19,7 +17,6 @@ export default function Home() {
       setError("Name, email and phone are required");
       return;
     }
-
 
     setLoading(true);
     setError("");
@@ -81,7 +78,7 @@ export default function Home() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="Full name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                   required
                 />
               </div>
@@ -96,7 +93,7 @@ export default function Home() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="email@example.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                   required
                 />
               </div>
@@ -111,7 +108,7 @@ export default function Home() {
                     setFormData({ ...formData, phone: e.target.value })
                   }
                   placeholder="+1 234 567 890"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                   required
                 />
               </div>

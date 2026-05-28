@@ -38,6 +38,24 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Login error:", error);
+    // If the backend (json-server) is not running, return a clearer 503 response
+    const err: any = error;
+    const isConnRefused =
+      err?.cause?.code === "ECONNREFUSED" ||
+      err?.code === "ECONNREFUSED" ||
+      (err?.message && err.message.includes("connect ECONNREFUSED")) ||
+      (err?.message && err.message.includes("fetch failed"));
+
+    if (isConnRefused) {
+      return NextResponse.json(
+        {
+          error:
+            "Backend unavailable. Start the JSON server (npm run server) or run npm run dev.",
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
