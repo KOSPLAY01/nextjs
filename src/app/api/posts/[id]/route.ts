@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/data";
 
-const API_URL = "http://localhost:3001";
+const EXTERNAL_API = process.env.JSON_SERVER_URL || "";
 
 interface RouteParams {
   params: Promise<{
@@ -21,30 +22,47 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const response = await fetch(`${API_URL}/posts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content }),
-    });
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/posts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to update post" },
+          { status: 500 },
+        );
+      const updatedPost = await response.json();
       return NextResponse.json(
-        { error: "Failed to update post" },
-        { status: 500 },
+        { message: "Post updated successfully", post: updatedPost },
+        { status: 200 },
       );
     }
 
-    const updatedPost = await response.json();
-
+    const updated = await db.updateInCollection("posts", id, {
+      title,
+      content,
+    });
+    if (!updated)
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     return NextResponse.json(
-      {
-        message: "Post updated successfully",
-        post: updatedPost,
-      },
+      { message: "Post updated successfully", post: updated },
       { status: 200 },
     );
   } catch (error) {
     console.error("Update post error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot update post. Provide a writable backend via JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -57,23 +75,40 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${API_URL}/posts/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/posts/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to delete post" },
+          { status: 500 },
+        );
       return NextResponse.json(
-        { error: "Failed to delete post" },
-        { status: 500 },
+        { message: "Post deleted successfully" },
+        { status: 200 },
       );
     }
 
+    const deleted = await db.deleteFromCollection("posts", id);
+    if (!deleted)
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     return NextResponse.json(
       { message: "Post deleted successfully" },
       { status: 200 },
     );
   } catch (error) {
     console.error("Delete post error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot delete post. Provide a writable backend via JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

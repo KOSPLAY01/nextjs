@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/data";
 
-const API_URL = "http://localhost:3001";
+const EXTERNAL_API = process.env.JSON_SERVER_URL || "";
 
 // GET all posts
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${API_URL}/posts`);
-    const posts = await response.json();
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/posts`);
+      const posts = await response.json();
+      return NextResponse.json(posts, { status: 200 });
+    }
 
+    const posts = await db.getCollection("posts");
     return NextResponse.json(posts, { status: 200 });
   } catch (error) {
     console.error("Get posts error:", error);
@@ -37,30 +42,42 @@ export async function POST(request: NextRequest) {
       createdAt: createdAt || new Date().toISOString(),
     };
 
-    const response = await fetch(`${API_URL}/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newPost),
-    });
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPost),
+      });
 
-    if (!response.ok) {
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to create post" },
+          { status: 500 },
+        );
+      const createdPost = await response.json();
       return NextResponse.json(
-        { error: "Failed to create post" },
-        { status: 500 },
+        { message: "Post created successfully", post: createdPost },
+        { status: 201 },
       );
     }
 
-    const createdPost = await response.json();
-
+    const created = await db.addToCollection("posts", newPost);
     return NextResponse.json(
-      {
-        message: "Post created successfully",
-        post: createdPost,
-      },
+      { message: "Post created successfully", post: created },
       { status: 201 },
     );
   } catch (error) {
     console.error("Create post error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot create post. Provide a writable backend via JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

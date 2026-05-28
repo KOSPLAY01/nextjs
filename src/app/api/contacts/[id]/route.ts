@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/data";
 
-const API_URL = "http://localhost:3001";
+const EXTERNAL_API = process.env.JSON_SERVER_URL || "";
 
 interface RouteParams {
   params: Promise<{
@@ -21,30 +22,48 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const response = await fetch(`${API_URL}/contacts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone }),
-    });
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/contacts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone }),
+      });
 
-    if (!response.ok) {
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to update contact" },
+          { status: 500 },
+        );
+      const updatedContact = await response.json();
       return NextResponse.json(
-        { error: "Failed to update contact" },
-        { status: 500 },
+        { message: "Contact updated successfully", contact: updatedContact },
+        { status: 200 },
       );
     }
 
-    const updatedContact = await response.json();
-
+    const updated = await db.updateInCollection("contacts", id, {
+      name,
+      email,
+      phone,
+    });
+    if (!updated)
+      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     return NextResponse.json(
-      {
-        message: "Contact updated successfully",
-        contact: updatedContact,
-      },
+      { message: "Contact updated successfully", contact: updated },
       { status: 200 },
     );
   } catch (error) {
     console.error("Update contact error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot update contact. Provide a writable backend via JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -57,23 +76,40 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${API_URL}/contacts/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/contacts/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to delete contact" },
+          { status: 500 },
+        );
       return NextResponse.json(
-        { error: "Failed to delete contact" },
-        { status: 500 },
+        { message: "Contact deleted successfully" },
+        { status: 200 },
       );
     }
 
+    const deleted = await db.deleteFromCollection("contacts", id);
+    if (!deleted)
+      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     return NextResponse.json(
       { message: "Contact deleted successfully" },
       { status: 200 },
     );
   } catch (error) {
     console.error("Delete contact error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot delete contact. Provide a writable backend via JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

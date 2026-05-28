@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/data";
 
-const API_URL = "http://localhost:3001";
+const EXTERNAL_API = process.env.JSON_SERVER_URL || "";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,20 +15,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by email and password
-    const response = await fetch(
-      `${API_URL}/users?email=${email}&password=${password}`,
-    );
-    const users = await response.json();
+    if (EXTERNAL_API) {
+      const response = await fetch(
+        `${EXTERNAL_API}/users?email=${email}&password=${password}`,
+      );
+      const users = await response.json();
 
-    if (users.length === 0) {
+      if (users.length === 0) {
+        return NextResponse.json(
+          { error: "Invalid email or password" },
+          { status: 401 },
+        );
+      }
+
+      const user = users[0];
+      return NextResponse.json(
+        {
+          message: "Login successful",
+          user: { id: user.id, name: user.name, email: user.email },
+        },
+        { status: 200 },
+      );
+    }
+
+    // Fallback to local DB file
+    const users = await db.getCollection("users");
+    const user = users.find(
+      (u: any) => u.email === email && u.password === password,
+    );
+    if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 },
       );
     }
-
-    const user = users[0];
 
     return NextResponse.json(
       {
@@ -38,7 +59,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Login error:", error);
-    // If the backend (json-server) is not running, return a clearer 503 response
     const err: any = error;
     const isConnRefused =
       err?.cause?.code === "ECONNREFUSED" ||

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import db from "@/lib/data";
 
-const API_URL = "http://localhost:3001";
+const EXTERNAL_API = process.env.JSON_SERVER_URL || "";
 
 // GET all contacts (or filter by userId)
 export async function GET(request: NextRequest) {
@@ -8,14 +9,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
-    const url = userId
-      ? `${API_URL}/contacts?userId=${userId}`
-      : `${API_URL}/contacts`;
+    if (EXTERNAL_API) {
+      const url = userId
+        ? `${EXTERNAL_API}/contacts?userId=${userId}`
+        : `${EXTERNAL_API}/contacts`;
+      const response = await fetch(url);
+      const contacts = await response.json();
+      return NextResponse.json(contacts, { status: 200 });
+    }
 
-    const response = await fetch(url);
-    const contacts = await response.json();
-
-    return NextResponse.json(contacts, { status: 200 });
+    const contacts = await db.getCollection("contacts");
+    const result = userId
+      ? contacts.filter((c: any) => String(c.userId) === String(userId))
+      : contacts;
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("Get contacts error:", error);
     return NextResponse.json(
@@ -45,30 +52,42 @@ export async function POST(request: NextRequest) {
       userId,
     };
 
-    const response = await fetch(`${API_URL}/contacts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newContact),
-    });
+    if (EXTERNAL_API) {
+      const response = await fetch(`${EXTERNAL_API}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newContact),
+      });
 
-    if (!response.ok) {
+      if (!response.ok)
+        return NextResponse.json(
+          { error: "Failed to create contact" },
+          { status: 500 },
+        );
+      const createdContact = await response.json();
       return NextResponse.json(
-        { error: "Failed to create contact" },
-        { status: 500 },
+        { message: "Contact created successfully", contact: createdContact },
+        { status: 201 },
       );
     }
 
-    const createdContact = await response.json();
-
+    const created = await db.addToCollection("contacts", newContact);
     return NextResponse.json(
-      {
-        message: "Contact created successfully",
-        contact: createdContact,
-      },
+      { message: "Contact created successfully", contact: created },
       { status: 201 },
     );
   } catch (error) {
     console.error("Create contact error:", error);
+    const e: any = error;
+    if (e?.readonly) {
+      return NextResponse.json(
+        {
+          error:
+            "Read-only deployment: cannot persist contact. Deploy a writable backend or set JSON_SERVER_URL.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
